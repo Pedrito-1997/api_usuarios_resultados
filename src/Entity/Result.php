@@ -3,7 +3,6 @@
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Hateoas\Configuration\Annotation as Hateoas;
 use JMS\Serializer\Annotation as JMS;
 
 /**
@@ -13,11 +12,6 @@ use JMS\Serializer\Annotation as JMS;
  *     "custom",
  *     custom={ "id", "result", "user", "time", "_links" }
  *     )
- *
- * @Hateoas\Relation(
- *     name="self",
- *     href="expr(constant('\\App\\Controller\\ApiResultsController::RUTA_API') ~ '/' ~ object.getId())"
- * )
  *
  * @JMS\XmlRoot("result")
  * @ORM\Table(
