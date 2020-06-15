@@ -11,7 +11,7 @@ use JMS\Serializer\Annotation as JMS;
  * @JMS\AccessorOrder(
  *     "custom",
  *     custom={ "id", "result", "user", "time", "_links" }
- *     )
+ * )
  *
  * @JMS\XmlRoot("result")
  * @ORM\Table(

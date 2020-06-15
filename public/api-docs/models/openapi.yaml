@@ -290,27 +290,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/Result'
         '400':
-          description: '`Bad Request`: e-mail already exists'
+          description: '`Bad Request`: the user does not exists'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Message'
               example:
                 code: 400
-                message: '`Bad Request`: e-mail already exists'
+                message: '`Bad Request`: the user does not exists'
         '401':
           $ref: '#/components/responses/401_Unauthorized_Response'
         '403':
           $ref: '#/components/responses/403_Forbidden_Response'
         '422':
-          description: '`Unprocessable entity`: e-mail or password is left out'
+          description: '`Unprocessable entity`: user or result is left out'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Message'
               example:
                 code: 422
-                message: '`Unprocessable entity`: e-mail or password is left out'
+                message: '`Unprocessable entity`: user or result is left out'
       security:
         - MiWApiSecurity: []
     options:
@@ -374,14 +374,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Result'
         '400':
-          description: '`Bad Request`: e-mail already exists'
+          description: '`Bad Request`: the user does not exists'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Message'
               example:
                 code: 400
-                message: '`Bad Request`: e-mail already exists'
+                message: '`Bad Request`: the user does not exists'
         '401':
           $ref: '#/components/responses/401_Unauthorized_Response'
         '403':

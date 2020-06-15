@@ -1,11 +1,13 @@
 <?php
 
-
 namespace App\Controller;
 
 use App\Entity\Message;
 use App\Entity\Result;
+use App\Entity\User;
+use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -120,7 +122,7 @@ class ApiResultsController extends AbstractController
                 ->getRepository(Result::class)
                 ->findOneBy(['id' => $resultId]);
 
-            if ($this->isGranted('ROLE_USER') && !empty($result) && $result->getUser()->getId() !== $this->getUser()->getId()) {
+            if (!$this->isGranted('ROLE_ADMIN') && !empty($result) && $result->getUser()->getId() !== $this->getUser()->getId()) {
                 throw new HttpException(
                     Response::HTTP_FORBIDDEN,
                     "`Forbidden`: you don't have permission to access"
@@ -184,7 +186,7 @@ class ApiResultsController extends AbstractController
                 ->getRepository(Result::class)
                 ->findOneBy(['id' => $resultId]);
 
-            if ($this->isGranted('ROLE_USER') && !empty($result) && $result->getUser()->getId() !== $this->getUser()->getId()) {
+            if (!$this->isGranted('ROLE_ADMIN') && !empty($result) && $result->getUser()->getId() !== $this->getUser()->getId()) {
                 throw new HttpException(
                     Response::HTTP_FORBIDDEN,
                     "`Forbidden`: you don't have permission to access"
@@ -240,6 +242,170 @@ class ApiResultsController extends AbstractController
             null,
             Response::HTTP_OK,
             ['Allow' => implode(', ', $methods)]
+        );
+    }
+
+    /**
+     * Summary: Creates a result
+     *
+     * @param Request $request request
+     * @return Response
+     * @Route(
+     *     ".{_format}",
+     *     defaults={"_format": null},
+     *     requirements={
+     *         "_format": "json|xml"
+     *     },
+     *     methods={ Request::METHOD_POST },
+     *     name="post"
+     * )
+     *
+     * @Security(
+     *     expression="is_granted('IS_AUTHENTICATED_FULLY')",
+     *     statusCode=401,
+     *     message="Invalid credentials."
+     * )
+     * @throws Exception
+     */
+    public function postAction(Request $request): Response
+    {
+        $body = $request->getContent();
+        $postData = json_decode($body, true);
+        $format = Utils::getFormat($request);
+
+        if ($this->isGranted('ROLE_ADMIN') || $this->isGranted('ROLE_USER')) {
+            if (!isset($postData['result'], $postData['userId'])) {
+                $message = new Message(Response::HTTP_UNPROCESSABLE_ENTITY, Response::$statusTexts[422]);
+                return Utils::apiResponse(
+                    $message->getCode(),
+                    ['message' => $message],
+                    $format
+                );
+            }
+
+            if (!$this->isGranted('ROLE_ADMIN') && $postData['userId'] !== $this->getUser()->getId()) {
+                throw new HttpException(
+                    Response::HTTP_FORBIDDEN,
+                    "`Forbidden`: you don't have permission to access"
+                );
+            }
+
+            /** @var User $user */
+            $user = $this->entityManager
+                ->getRepository(User::class)
+                ->findOneBy(['id' => $postData['userId']]);
+
+            if (null === $user) {
+                $message = new Message(Response::HTTP_BAD_REQUEST, Response::$statusTexts[400]);
+                return Utils::apiResponse(
+                    $message->getCode(),
+                    ['message' => $message],
+                    $format
+                );
+            }
+            $result = new Result($postData['result'], $user, new DateTime('now'));
+
+            $this->entityManager->persist($result);
+            $this->entityManager->flush();
+
+        } else {
+            throw new HttpException(
+                Response::HTTP_FORBIDDEN,
+                "`Forbidden`: you don't have permission to access"
+            );
+        }
+
+        return Utils::apiResponse(
+            Response::HTTP_CREATED,
+            ['result' => $result],
+            $format
+        );
+    }
+
+    /**
+     * Summary: Updates a result
+     * Notes: Updates the result identified by &#x60;resultId&#x60;.
+     *
+     * @param Request $request request
+     * @param int $resultId Result id
+     * @return  Response
+     * @Route(
+     *     "/{resultId}.{_format}",
+     *     defaults={"_format": null},
+     *     requirements={
+     *          "resultId": "\d+",
+     *         "_format": "json|xml"
+     *     },
+     *     methods={ Request::METHOD_PUT },
+     *     name="put"
+     * )
+     *
+     * @Security(
+     *     expression="is_granted('IS_AUTHENTICATED_FULLY')",
+     *     statusCode=401,
+     *     message="Invalid credentials."
+     * )
+     */
+    public function putAction(Request $request, int $resultId): Response
+    {
+        $body = $request->getContent();
+        $postData = json_decode($body, true);
+        $format = Utils::getFormat($request);
+
+        if ($this->isGranted('ROLE_ADMIN') || $this->isGranted('ROLE_USER')) {
+            if (isset($postData['userId'])) {
+                /** @var User $user */
+                $user = $this->entityManager
+                    ->getRepository(User::class)
+                    ->findOneBy(['id' => $postData['userId']]);
+
+                if (null === $user) {
+                    $message = new Message(Response::HTTP_BAD_REQUEST, Response::$statusTexts[400]);
+                    return Utils::apiResponse(
+                        $message->getCode(),
+                        ['message' => $message],
+                        $format
+                    );
+
+                }
+            }
+
+            $result = $this->entityManager
+                ->getRepository(Result::class)
+                ->findOneBy(['id' => $resultId]);
+
+            if (!$this->isGranted('ROLE_ADMIN') && $result->getUser()->getId() !== $this->getUser()->getId()) {
+                throw new HttpException(
+                    Response::HTTP_FORBIDDEN,
+                    "`Forbidden`: you don't have permission to access"
+                );
+            }
+
+            if (null === $result) {
+                $message = new Message(Response::HTTP_BAD_REQUEST, Response::$statusTexts[400]);
+                return Utils::apiResponse(
+                    $message->getCode(),
+                    ['message' => $message],
+                    $format
+                );
+            }
+
+            $result->setResult(isset($postData['result']) ? $postData['result'] : $result->getResult());
+            $result->setUser(isset($postData['userId']) ? $user : $result->getUser());
+            $this->entityManager->persist($result);
+            $this->entityManager->flush();
+
+        } else {
+            throw new HttpException(
+                Response::HTTP_FORBIDDEN,
+                "`Forbidden`: you don't have permission to access"
+            );
+        }
+
+        return Utils::apiResponse(
+            209,
+            ['result' => $result],
+            $format
         );
     }
 
